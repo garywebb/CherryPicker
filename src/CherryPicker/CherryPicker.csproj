@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard1.3;netstandard2.0;net45</TargetFrameworks>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Gary Webb</Authors>
     <Description>CherryPicker is a test data injection framework for building and populating data objects.</Description>
     <PackageTags>testing test-automation data-injection test unittest</PackageTags>
