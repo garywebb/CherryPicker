@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard1.3</TargetFramework>
+    <Version>0.1.0</Version>
+    <Authors>Gary Webb</Authors>
+    <Description>CherryPicker is a test data injection framework for building and populating data objects.</Description>
+    <PackageTags>testing test-automation data-injection test unittest</PackageTags>
+    <RepositoryUrl>https://github.com/garywebb/CherryPicker</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/garywebb/CherryPicker</PackageProjectUrl>
+    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="structuremap" Version="4.6.1" />
+  </ItemGroup>
+
+</Project>
