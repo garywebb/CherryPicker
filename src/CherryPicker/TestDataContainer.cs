@@ -68,7 +68,7 @@ namespace CherryPicker
         /// <returns>The TestDataContainer, used for fluent configuration.</returns>
         public TestDataContainer For<T>(params Action<Defaulter<T>>[] defaulterActions)
         {
-            var newPropertyDefaultsForType = BuildPropertyDefaultsForType(Evaluate(defaulterActions));
+            var newPropertyDefaultsForType = BuildPropertyDefaultsForType(defaulterActions);
             var invalidOverrides = newPropertyDefaultsForType.Value.Where(o => o.Value == null).ToList();
             if (invalidOverrides.Any())
             {
@@ -93,7 +93,7 @@ namespace CherryPicker
             }
 
             var tempTestDataBuilder = CreateChildInstance();
-            var newPropertyDefaultsForType = BuildPropertyDefaultsForType(Evaluate(defaultOverrideActions));
+            var newPropertyDefaultsForType = BuildPropertyDefaultsForType(defaultOverrideActions);
             var invalidOverrides = newPropertyDefaultsForType.Value.Where(o => o.Value == null).ToList();
             if (invalidOverrides.Any())
             {
@@ -150,30 +150,32 @@ namespace CherryPicker
             }
         }
 
-        private KeyValuePair<Type, Dictionary<string, object>> BuildPropertyDefaultsForType<T>(IEnumerable<BaseDefaulter<T>> defaulters)
+        private KeyValuePair<Type, Dictionary<string, object>> BuildPropertyDefaultsForType<T>(params Action<Defaulter<T>>[] defaulterActions)
         {
-            var propertyDefaults = defaulters.ToDictionary(defaulter => defaulter.PropertyName, defaulter => defaulter.PropertyValue);
-            return new KeyValuePair<Type, Dictionary<string, object>>(typeof(T), propertyDefaults);
-        }
-
-        private IEnumerable<BaseDefaulter<T>> Evaluate<T>(params Action<Defaulter<T>>[] defaulterActions)
-        {
+            var propertyDefaults = new Dictionary<string, object>();
             foreach (var defaulterAction in defaulterActions)
             {
                 var defaulter = new Defaulter<T>();
                 defaulterAction(defaulter);
-                yield return defaulter;
+
+                propertyDefaults.Add(defaulter.PropertyName, defaulter.PropertyValue);
             };
+            
+            return new KeyValuePair<Type, Dictionary<string, object>>(typeof(T), propertyDefaults);
         }
 
-        private IEnumerable<BaseDefaulter<T>> Evaluate<T>(params Action<DefaultOverride<T>>[] defaultOverrideActions)
+        private KeyValuePair<Type, Dictionary<string, object>> BuildPropertyDefaultsForType<T>(params Action<DefaultOverride<T>>[] defaultOverrideActions)
         {
+            var propertyDefaults = new Dictionary<string, object>();
             foreach (var defaultOverrideAction in defaultOverrideActions)
             {
                 var defaultOverrider = new DefaultOverride<T>();
                 defaultOverrideAction(defaultOverrider);
-                yield return defaultOverrider;
+
+                propertyDefaults.Add(defaultOverrider.PropertyName, defaultOverrider.PropertyValue);
             };
+
+            return new KeyValuePair<Type, Dictionary<string, object>>(typeof(T), propertyDefaults);
         }
 
         private string BuildInvalidOverridesExceptionMessage<T>(List<KeyValuePair<string, object>> invalidOverrides, bool isDefaultOverride)

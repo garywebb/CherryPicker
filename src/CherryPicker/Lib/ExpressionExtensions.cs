@@ -3,20 +3,11 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace CherryPicker
+namespace CherryPicker.Lib
 {
-    public abstract class BaseDefaulter<T>
+    internal static class ExpressionExtensions
     {
-        internal string PropertyName { get; private set; }
-        internal object PropertyValue { get; set; }
-
-        protected virtual DefaultValue<T, TSetterType> DefaultImpl<TSetterType>(Expression<Func<T, TSetterType>> expression)
-        {
-            PropertyName = GetPropertyName(expression);
-            return new DefaultValue<T, TSetterType>(this);
-        }
-
-        private string GetPropertyName<TSettertype>(Expression<Func<T, TSettertype>> expression)
+        public static string GetPropertyName<T, TSettertype>(this Expression<Func<T, TSettertype>> expression)
         {
             MemberExpression memberExpression = null;
             if (expression.Body.NodeType == ExpressionType.Convert)

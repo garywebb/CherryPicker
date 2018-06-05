@@ -6,9 +6,9 @@ namespace CherryPicker
 {
     public class DefaultValue<T, TSetterType>
     {
-        private BaseDefaulter<T> _defaulter;
+        private Defaulter<T> _defaulter;
 
-        public DefaultValue(BaseDefaulter<T> defaulter)
+        public DefaultValue(Defaulter<T> defaulter)
         {
             _defaulter = defaulter;
         }
