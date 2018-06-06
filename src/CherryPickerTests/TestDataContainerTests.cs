@@ -174,10 +174,24 @@ namespace CherryPickerTests
         }
 
         [Fact]
+        public void When_a_default_is_set_to_null_Then_an_exception_is_thrown()
+        {
+            Assert.Throws<Exception>(() =>
+                _container.For<Person>(x => x.Default(p => p.FirstName).To(null)));
+        }
+
+        [Fact]
         public void When_a_default_is_not_set_Then_an_exception_is_thrown()
         {
             Assert.Throws<Exception>(() => 
                 _container.For<Person>(x => x.Default(p => p.FirstName)));
+        }
+
+        [Fact]
+        public void When_a_default_override_is_set_to_null_Then_an_exception_is_thrown()
+        {
+            Assert.Throws<Exception>(() =>
+                _container.Build<Person>(x => x.Set(p => p.FirstName).To(null)));
         }
 
         [Fact]

@@ -12,7 +12,7 @@ namespace CherryPicker
     /// </summary>
     public class TestDataContainer : ITestDataContainer
     {
-        private Dictionary<Type, Dictionary<string, object>> _propertyDefaultsByType;
+        private readonly Dictionary<Type, Dictionary<string, object>> _propertyDefaultsByType;
         private readonly PropertySetterInstancePolicy _propertySetterInstancePolicy;
 
         /// <summary>
@@ -155,10 +155,18 @@ namespace CherryPicker
             var propertyDefaults = new Dictionary<string, object>();
             foreach (var defaulterAction in defaulterActions)
             {
-                var defaulter = new Defaulter<T>();
+                var wasCallbackCalled = false;
+                var defaulter = new Defaulter<T>((propertyName, propertyValue) =>
+                {
+                    propertyDefaults.Add(propertyName, propertyValue);
+                    wasCallbackCalled = true;
+                });
                 defaulterAction(defaulter);
 
-                propertyDefaults.Add(defaulter.PropertyName, defaulter.PropertyValue);
+                if (!wasCallbackCalled)
+                {
+                    propertyDefaults.Add(defaulter.PropertyName, null);
+                }
             };
             
             return new KeyValuePair<Type, Dictionary<string, object>>(typeof(T), propertyDefaults);
@@ -169,10 +177,18 @@ namespace CherryPicker
             var propertyDefaults = new Dictionary<string, object>();
             foreach (var defaultOverrideAction in defaultOverrideActions)
             {
-                var defaultOverrider = new DefaultOverride<T>();
+                var wasCallbackCalled = false;
+                var defaultOverrider = new DefaultOverride<T>((propertyName, propertyValue) =>
+                {
+                    propertyDefaults.Add(propertyName, propertyValue);
+                    wasCallbackCalled = true;
+                });
                 defaultOverrideAction(defaultOverrider);
 
-                propertyDefaults.Add(defaultOverrider.PropertyName, defaultOverrider.PropertyValue);
+                if (!wasCallbackCalled)
+                {
+                    propertyDefaults.Add(defaultOverrider.PropertyName, null);
+                }
             };
 
             return new KeyValuePair<Type, Dictionary<string, object>>(typeof(T), propertyDefaults);
