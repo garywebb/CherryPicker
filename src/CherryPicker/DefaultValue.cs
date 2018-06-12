@@ -6,16 +6,21 @@ namespace CherryPicker
 {
     public class DefaultValue<T, TSetterType>
     {
-        private BaseDefaulter<T> _defaulter;
+        private readonly string _propertyName;
+        private readonly Action<string, object> _populatePropertyDefaultsCallback;
+        private readonly Defaulter<T> _parent;
 
-        public DefaultValue(BaseDefaulter<T> defaulter)
+        public DefaultValue(string propertyName, Action<string, object> populatePropertyDefaultsCallback, Defaulter<T> parent)
         {
-            _defaulter = defaulter;
+            _propertyName = propertyName;
+            _populatePropertyDefaultsCallback = populatePropertyDefaultsCallback;
+            _parent = parent;
         }
 
-        public void To(TSetterType defaultValue)
+        public Defaulter<T> To(TSetterType defaultValue)
         {
-            _defaulter.PropertyValue = defaultValue;
+            _populatePropertyDefaultsCallback(_propertyName, defaultValue);
+            return _parent;
         }
     }
 }

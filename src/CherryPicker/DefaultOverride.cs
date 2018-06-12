@@ -1,20 +1,30 @@
-﻿using System;
+﻿using CherryPicker.Lib;
+using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text;
 
 namespace CherryPicker
 {
-    public class DefaultOverride<T> : BaseDefaulter<T>
+    public class DefaultOverride<T>
     {
-        public DefaultValue<T, TSetterType> Set<TSetterType>(Expression<Func<T, TSetterType>> expression)
+        private readonly Action<string, object> _populatePropertyDefaultsCallback;
+        internal string PropertyName { get; private set; }
+
+        public DefaultOverride(Action<string, object> populatePropertyDefaultsCallback)
+        {
+            _populatePropertyDefaultsCallback = populatePropertyDefaultsCallback;
+        }
+
+        public DefaultOverrideValue<T, TSetterType> Set<TSetterType>(Expression<Func<T, TSetterType>> expression)
         {
             if (expression == null)
             {
                 throw new ArgumentNullException(nameof(expression));
             }
 
-            return DefaultImpl(expression);
+            PropertyName = expression.GetPropertyName();
+            return new DefaultOverrideValue<T, TSetterType>(PropertyName, _populatePropertyDefaultsCallback, this);
         }
     }
 }
