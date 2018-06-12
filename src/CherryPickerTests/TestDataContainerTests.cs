@@ -97,9 +97,56 @@ namespace CherryPickerTests
 
             var person = _container.Build<Person>(
                 x => x.Set(p => p.Vehicle).To(new Vehicle { Make = "Nissan", Model = "350Z" }));
-            
+
+            Assert.True(person.FirstName == null);
             Assert.True(person.Vehicle.Make == "Nissan");
             Assert.True(person.Vehicle.Model == "350Z");
+        }
+
+        [Fact]
+        public void When_an_object_is_built_Then_the_full_object_tree_is_built()
+        {
+            _container
+                .For<Vehicle>(
+                    x => x.Default(v => v.Make).To("BMW"),
+                    x => x.Default(v => v.Model).To("3 Series"))
+                .For<Engine>(
+                    x => x.Default(e => e.Capacity).To(3000));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.FirstName == null);
+            Assert.True(person.Vehicle.Make == "BMW");
+            Assert.True(person.Vehicle.Model == "3 Series");
+            Assert.True(person.Vehicle.Engine.Capacity == 3000);
+        }
+
+        [Fact]
+        public void When_building_objects_with_non_value_type_properties_Then_by_default_the_non_value_types_are_built_new_for_each_built_object()
+        {
+            _container
+                .For<Vehicle>(
+                    x => x.Default(v => v.Make).To("BMW"),
+                    x => x.Default(v => v.Model).To("3 Series"));
+
+            var person1 = _container.Build<Person>();
+            var person2 = _container.Build<Person>();
+
+            Assert.True(person1.Vehicle != null);
+            Assert.True(person2.Vehicle != null);
+            Assert.True(person1.Vehicle != person2.Vehicle);
+        }
+
+        [Fact]
+        public void When_an_object_with_a_circular_reference_is_built_Then_a_build_exception_is_thrown()
+        {
+            _container
+                .For<CircularRefParent>(
+                    x => x.Default(p => p.Name).To("Parent"))
+                .For<CircularRefChild>(
+                    x => x.Default(c => c.Name).To("Child"));
+
+            Assert.Throws<StructureMap.Building.StructureMapBuildException>(() => _container.Build<CircularRefParent>());
         }
 
         [Fact]
