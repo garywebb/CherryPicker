@@ -174,10 +174,24 @@ namespace CherryPickerTests
         }
 
         [Fact]
-        public void When_a_default_is_set_to_null_Then_an_exception_is_thrown()
+        public void When_a_default_is_set_to_null_Then_the_property_is_left_null()
         {
-            Assert.Throws<Exception>(() =>
-                _container.For<Person>(x => x.Default(p => p.FirstName).To(null)));
+            _container.For<Person>(x => x.Default(p => p.FirstName).To(null));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.FirstName == null);
+        }
+
+        [Fact]
+        public void When_a_default_is_replaced_with_a_null__Then_the_property_is_left_null()
+        {
+            _container.For<Person>(x => x.Default(p => p.FirstName).To("Gary"));
+            _container.For<Person>(x => x.Default(p => p.FirstName).To(null));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.FirstName == null);
         }
 
         [Fact]
@@ -188,10 +202,21 @@ namespace CherryPickerTests
         }
 
         [Fact]
-        public void When_a_default_override_is_set_to_null_Then_an_exception_is_thrown()
+        public void When_a_default_override_is_set_to_null_Then_the_property_is_left_null()
         {
-            Assert.Throws<Exception>(() =>
-                _container.Build<Person>(x => x.Set(p => p.FirstName).To(null)));
+            var person = _container.Build<Person>(x => x.Set(p => p.FirstName).To(null));
+
+            Assert.True(person.FirstName == null);
+        }
+
+        [Fact]
+        public void When_a_default_is_overriden_with_a_null_Then_the_property_is_left_null()
+        {
+            _container.For<Person>(x => x.Default(p => p.FirstName).To("Gary"));
+
+            var person = _container.Build<Person>(x => x.Set(p => p.FirstName).To(null));
+
+            Assert.True(person.FirstName == null);
         }
 
         [Fact]

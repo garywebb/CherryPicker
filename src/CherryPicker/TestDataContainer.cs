@@ -15,8 +15,10 @@ namespace CherryPicker
         private readonly Dictionary<Type, Dictionary<string, object>> _propertyDefaultsByType;
         private readonly PropertySetterInstancePolicy _propertySetterInstancePolicy;
 
+        private readonly object _missingValue = new object();
+
         /// <summary>
-        /// Constructor to create a TestDataContainer
+        /// Constructor to create a TestDataContainer.
         /// </summary>
         public TestDataContainer()
         {
@@ -69,7 +71,7 @@ namespace CherryPicker
         public TestDataContainer For<T>(params Action<Defaulter<T>>[] defaulterActions)
         {
             var newPropertyDefaultsForType = BuildPropertyDefaultsForType(defaulterActions);
-            var invalidOverrides = newPropertyDefaultsForType.Value.Where(o => o.Value == null).ToList();
+            var invalidOverrides = newPropertyDefaultsForType.Value.Where(o => o.Value == _missingValue).ToList();
             if (invalidOverrides.Any())
             {
                 throw new Exception(BuildInvalidOverridesExceptionMessage<T>(invalidOverrides, isDefaultOverride: false));
@@ -94,7 +96,7 @@ namespace CherryPicker
 
             var tempTestDataBuilder = CreateChildInstance();
             var newPropertyDefaultsForType = BuildPropertyDefaultsForType(defaultOverrideActions);
-            var invalidOverrides = newPropertyDefaultsForType.Value.Where(o => o.Value == null).ToList();
+            var invalidOverrides = newPropertyDefaultsForType.Value.Where(o => o.Value == _missingValue).ToList();
             if (invalidOverrides.Any())
             {
                 throw new Exception(BuildInvalidOverridesExceptionMessage<T>(invalidOverrides, isDefaultOverride: true));
@@ -135,7 +137,16 @@ namespace CherryPicker
         {
             Dictionary<string, object> propertyDefaults;
             var success = _propertyDefaultsByType.TryGetValue(pluginType, out propertyDefaults);
-            return success ? propertyDefaults : new Dictionary<string, object>();
+
+            if (success)
+            {
+                var nonNullPropertyDefaults = propertyDefaults
+                    .Where(pair => pair.Value != null)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value);
+                return nonNullPropertyDefaults;
+            }
+
+            return new Dictionary<string, object>();
         }
 
         private IEnumerable<Type> GetTypesToRebuildFrom(Type buildType)
@@ -158,14 +169,14 @@ namespace CherryPicker
                 var wasCallbackCalled = false;
                 var defaulter = new Defaulter<T>((propertyName, propertyValue) =>
                 {
-                    propertyDefaults.Add(propertyName, propertyValue);
                     wasCallbackCalled = true;
+                    propertyDefaults.Add(propertyName, propertyValue);
                 });
                 defaulterAction(defaulter);
 
                 if (!wasCallbackCalled)
                 {
-                    propertyDefaults.Add(defaulter.PropertyName, null);
+                    propertyDefaults.Add(defaulter.PropertyName, _missingValue);
                 }
             };
             
@@ -180,14 +191,14 @@ namespace CherryPicker
                 var wasCallbackCalled = false;
                 var defaultOverrider = new DefaultOverride<T>((propertyName, propertyValue) =>
                 {
-                    propertyDefaults.Add(propertyName, propertyValue);
                     wasCallbackCalled = true;
+                    propertyDefaults.Add(propertyName, propertyValue);
                 });
                 defaultOverrideAction(defaultOverrider);
 
                 if (!wasCallbackCalled)
                 {
-                    propertyDefaults.Add(defaultOverrider.PropertyName, null);
+                    propertyDefaults.Add(defaultOverrider.PropertyName, _missingValue);
                 }
             };
 
