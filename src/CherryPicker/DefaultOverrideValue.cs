@@ -8,16 +8,19 @@ namespace CherryPicker
     {
         private readonly string _propertyName;
         private readonly Action<string, object> _populatePropertyDefaultsCallback;
+        private readonly DefaultOverride<T> _parent;
 
-        public DefaultOverrideValue(string propertyName, Action<string, object> populatePropertyDefaultsCallback)
+        public DefaultOverrideValue(string propertyName, Action<string, object> populatePropertyDefaultsCallback, DefaultOverride<T> parent)
         {
             _propertyName = propertyName;
             _populatePropertyDefaultsCallback = populatePropertyDefaultsCallback;
+            _parent = parent;
         }
 
-        public void To(TSetterType defaultValue)
+        public DefaultOverride<T> To(TSetterType defaultValue)
         {
             _populatePropertyDefaultsCallback(_propertyName, defaultValue);
+            return _parent;
         }
     }
 }

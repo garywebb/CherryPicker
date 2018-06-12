@@ -25,6 +25,19 @@ namespace CherryPickerTests
         }
 
         [Fact]
+        public void Chaining_When_overrides_are_passed_at_build_time_Then_they_are_used()
+        {
+            var person = _container.Build<Person>(x => x
+                .Set(p => p.FirstName).To("Bertie")
+                .Set(p => p.LastName).To("Einstein")
+                .Set(p => p.Age).To(139));
+
+            Assert.True(person.FirstName == "Bertie");
+            Assert.True(person.LastName == "Einstein");
+            Assert.True(person.Age == 139);
+        }
+
+        [Fact]
         public void When_overrides_are_passed_at_build_time_Then_those_overrides_are_not_used_for_any_other_built_object()
         {
             var personWithOverrides = _container.Build<Person>(
@@ -50,6 +63,21 @@ namespace CherryPickerTests
                 x => x.Default(p => p.FirstName).To("Gary"),
                 x => x.Default(p => p.LastName).To("Webb"),
                 x => x.Default(p => p.Age).To(38));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.FirstName == "Gary");
+            Assert.True(person.LastName == "Webb");
+            Assert.True(person.Age == 38);
+        }
+
+        [Fact]
+        public void Chaining_When_defaults_are_set_for_a_type_Then_they_are_used()
+        {
+            _container.For<Person>(x => x
+                .Default(p => p.FirstName).To("Gary")
+                .Default(p => p.LastName).To("Webb")
+                .Default(p => p.Age).To(38));
 
             var person = _container.Build<Person>();
 
@@ -184,7 +212,7 @@ namespace CherryPickerTests
         }
 
         [Fact]
-        public void When_a_default_is_replaced_with_a_null__Then_the_property_is_left_null()
+        public void When_a_default_is_replaced_with_a_null_Then_the_property_is_left_null()
         {
             _container.For<Person>(x => x.Default(p => p.FirstName).To("Gary"));
             _container.For<Person>(x => x.Default(p => p.FirstName).To(null));

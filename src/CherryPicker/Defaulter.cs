@@ -24,7 +24,7 @@ namespace CherryPicker
             }
 
             PropertyName = expression.GetPropertyName();
-            return new DefaultValue<T, TSetterType>(PropertyName, _populatePropertyDefaultsCallback);
+            return new DefaultValue<T, TSetterType>(PropertyName, _populatePropertyDefaultsCallback, this);
         }
     }
 }

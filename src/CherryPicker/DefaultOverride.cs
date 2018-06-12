@@ -24,7 +24,7 @@ namespace CherryPicker
             }
 
             PropertyName = expression.GetPropertyName();
-            return new DefaultOverrideValue<T, TSetterType>(PropertyName, _populatePropertyDefaultsCallback);
+            return new DefaultOverrideValue<T, TSetterType>(PropertyName, _populatePropertyDefaultsCallback, this);
         }
     }
 }
