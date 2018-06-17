@@ -41,7 +41,7 @@ public class Tests
     public void InvalidEmail() 
     {
         var person = A<Person>(
-			x => x.Set(p => p.Email).To("dodgy@invalid"));
+            x => x.Set(p => p.Email).To("dodgy@invalid"));
 
         Assert.Throws<ArgumentException>(() => new SomeApplication().Process(person));
     } 
@@ -50,7 +50,7 @@ public class Tests
     public void InvalidDOB() 
     { 
         var person = A<Person>(
-			x => x.Set(p => p.DOB).To(new DateTime(9999, 12, 31))); 
+            x => x.Set(p => p.DOB).To(new DateTime(9999, 12, 31))); 
 
         Assert.Throws<ArgumentException>(() => new SomeApplication().Process(person)); 
     } 
