@@ -1,100 +1,62 @@
-CherryPicker is a test data injection framework for building and populating data objects.
+## What is CherryPicker?
 
-## Set defaults for each data type
+CherryPicker is a data injection framework for building test data objects. 
 
-```c#
-ITestDataContainer container = new TestDataContainer();
+It lets you define defaults for each of your data class’s properties once, so that you don't have to repeat yourself every time you build a new data object. And with default overrides, you can create unique data objects, specific for your tests, in a very small amount of code. 
 
-container.For<Person>(
-    x => x.Default(p => p.FirstName).To("Bertie"),
-    x => x.Default(p => p.LastName).To("Einstein"),
-    x => x.Default(p => p.Age).To(139));
+## Download 
 
-var person = container.Build<Person>();
+[![NuGet Badge](https://buildstats.info/nuget/cherrypicker)](https://www.nuget.org/packages/CherryPicker/) 
 
-Assert.True(person.FirstName == "Bertie");
-Assert.True(person.LastName == "Einstein");
-Assert.True(person.Age == 139);
-```
+## Can I see an example? 
 
-## Override the defaults
+Of course! In this example, we see how to build up the defaults for a type and then how to override them as required for each test. 
+
+Also included is a very useful helper method that I include in my tests’ base class that makes the tests even more readable! 
 
 ```c#
-var person = container.Build<Person>(
-    x => x.Set(p => p.FirstName).To("Albert"));
+public class Tests 
+{ 
+    private readonly ITestDataContainer testDataContainer = new TestDataContainer(); 
 
-Assert.True(person.FirstName == "Albert");
-Assert.True(person.LastName == "Einstein");
-Assert.True(person.Age == 139);
-```
-
-## Build complex objects easily
-
-```c#
-container
-    .For<Person>(
-        x => x.Default(p => p.FirstName).To("Bertie"))
-    .For<Vehicle>(
-        x => x.Default(v => v.Make).To("Ford"),
-        x => x.Default(v => v.Model).To("Model T"));
-
-var person = container.Build<Person>();
-
-Assert.True(person.Vehicle.Make == "Ford");
-Assert.True(person.Vehicle.Model == "Model T");
-```
-
-## Example
-Turn this:
-
-```c#
-[Fact]
-public void CarCountingTest()
-{
-    var bmwMake = new Make { Name = "BMW" };
-    var car1 = new Car 
+    public Tests() 
     { 
-        Make = bmwMake, 
-        Model = "3 Series", 
-        Colour = "Blue" 
-    };
-    var car2 = new Car 
-    { 
-        Make = bmwMake, 
-        Model = "5 Series", 
-        Colour = "Red" 
-    };
-    var car3 = new Car 
-    { 
-        Make = bmwMake, 
-        Model = "5 Series", 
-        Colour = "Blue" 
-    };
-    var cars = new List<Car> { car1, car2, car3 };
-    
-    var blueCarCount = new CarCounter().Count(cars, colour = "Blue");
-    
-    Assert.True(blueCarCount == 2);
-}
-```
+        //Set up defaults once to be reused for each new object 
+        testDataContainer.For<Person>(x => x 
+            .Default(p => p.Name).To("Albert Einstein") 
+            .Default(p => p.Username).To("Bertie1") 
+            .Default(p => p.Email).To("albert@emc2.com") 
+            .Default(p => p.DOB).To(new DateTime(1879, 03, 14))); 
+    } 
 
-## CherryPicker Version
-Into this:
+    [Fact]
+    public void HappyPath() 
+    { 
+        //Requires all properties of Person to be populated with good values 
+        new SomeApplication().Process(A<Person>());
+    } 
 
-```c#
-[Fact]
-public void CarCountingTest2()
-{
-    //The make and model of the car is irrelevant in this test, only the colour is important.
-    var cars = new List<Car>
+    [Fact]
+    public void InvalidEmail() 
     {
-        container.Build<Car>(x => x.Set(car => car.Colour).To("Blue")),
-        container.Build<Car>(x => x.Set(car => car.Colour).To("Red")),
-        container.Build<Car>(x => x.Set(car => car.Colour).To("Blue")),
-    };
-    
-    var blueCarCount = new CarCounter().Count(cars, colour = "Blue");
-    
-    Assert.True(blueCarCount == 2);
+        var person = A<Person>(x => x.Set(p => p.Email).To("dodgy@invalid"));
+        Assert.Throws<ArgumentException>(() => new SomeApplication().Process(person));
+    } 
+
+    [Fact] 
+    public void InvalidDOB() 
+    { 
+        var person = A<Person>(x => x.Set(p => p.DOB).To(new DateTime(9999, 12, 31))); 
+        Assert.Throws<ArgumentException>(() => new SomeApplication().Process(person)); 
+    } 
+ 
+    /// <summary> 
+    /// Usually stored in a base class. This method wraps the Build 
+    /// process in an even more succinct readable method. 
+    /// </summary> 
+    private T A<T>(params Action<DefaultOverride<T>>[] overrides) 
+    { 
+        return testDataContainer.Build(overrides); 
+    } 
 }
 ```
