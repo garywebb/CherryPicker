@@ -33,7 +33,7 @@ public class Tests
     public void HappyPath() 
     { 
         //Requires all properties of Person to be populated with good values 
-		var person = A<Person>();
+        var person = A<Person>();
         new SomeApplication().Process(person);
     } 
 
