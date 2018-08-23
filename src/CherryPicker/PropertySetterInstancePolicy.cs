@@ -17,7 +17,8 @@ namespace CherryPicker
             foreach (var propertyDefault in propertyDefaults)
             {
                 var property = instance.SettableProperties().FirstOrDefault(prop => prop.Name == propertyDefault.Key);
-                instance.Dependencies.AddForProperty(property, propertyDefault.Value);
+                var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                instance.Dependencies.Add(property.Name, propertyType, propertyDefault.Value);
             }
         }
     }

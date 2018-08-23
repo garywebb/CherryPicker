@@ -117,6 +117,26 @@ namespace CherryPickerTests
         }
 
         [Fact]
+        public void When_a_built_objects_properties_are_nullable_types_Then_no_exception_is_thrown_when_setting_those_properties()
+        {
+            _container.For<NullableTypeClass>(x => x
+                .Default(nt => nt.NullableInt).To(3));
+
+            var nullableTypeClass = _container.Build<NullableTypeClass>();
+
+            Assert.True(nullableTypeClass.NullableInt == 3);
+        }
+
+        [Fact]
+        public void When_a_nullable_type_property_default_is_overriden_Then_no_exception_is_thrown_when_setting_those_properties()
+        {
+            var nullableTypeClass = _container.Build<NullableTypeClass>(x => x
+                .Set(nt => nt.NullableInt).To(3));
+
+            Assert.True(nullableTypeClass.NullableInt == 3);
+        }
+
+        [Fact]
         public void When_a_non_value_type_property_is_overriden_Then_the_defaults_are_not_used()
         {
             _container.For<Vehicle>(
