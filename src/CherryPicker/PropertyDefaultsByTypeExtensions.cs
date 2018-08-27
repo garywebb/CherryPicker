@@ -15,33 +15,35 @@ namespace CherryPicker
             return propertyDefaultsByTypesClone;
         }
 
-        public static void Merge(this Dictionary<Type, Dictionary<string, object>> currentPropertyDefaultsByType,
-            KeyValuePair<Type, Dictionary<string, object>> newPropertyDefaultsForType)
+        public static void Merge(this Dictionary<string, object> currentPropertyDefaults, 
+            Dictionary<string, object> newPropertyDefaults)
         {
-            var newPropertyDefaultsType = newPropertyDefaultsForType.Key;
-            if (!currentPropertyDefaultsByType.ContainsKey(newPropertyDefaultsType))
+            foreach (var newPropertyDefault in newPropertyDefaults)
             {
-                currentPropertyDefaultsByType.Add(newPropertyDefaultsType, newPropertyDefaultsForType.Value);
-            }
-            else
-            {
-                var currentPropertyDefaults = currentPropertyDefaultsByType[newPropertyDefaultsType];
-                foreach (var newPropertyDefault in newPropertyDefaultsForType.Value)
-                {
-                    SetPropertyDefault(currentPropertyDefaults, newPropertyDefault.Key, newPropertyDefault.Value);
-                }
+                currentPropertyDefaults.Set(newPropertyDefault.Key, newPropertyDefault.Value);
             }
         }
 
-        private static void SetPropertyDefault(Dictionary<string, object> propertyDefaults, string propertyName, object propertyValue)
+        private static void Set(this Dictionary<string, object> currentPropertyDefaults, 
+            string newDefaultPropertyName, object newDefaultPropertyValue)
         {
-            if (!propertyDefaults.ContainsKey(propertyName))
+            if (!currentPropertyDefaults.ContainsKey(newDefaultPropertyName))
             {
-                propertyDefaults.Add(propertyName, propertyValue);
+                if (newDefaultPropertyValue != null)
+                {
+                    currentPropertyDefaults.Add(newDefaultPropertyName, newDefaultPropertyValue);
+                }
             }
             else
             {
-                propertyDefaults[propertyName] = propertyValue;
+                if (newDefaultPropertyValue == null)
+                {
+                    currentPropertyDefaults.Remove(newDefaultPropertyName);
+                }
+                else
+                {
+                    currentPropertyDefaults[newDefaultPropertyName] = newDefaultPropertyValue;
+                }
             }
         }
     }
