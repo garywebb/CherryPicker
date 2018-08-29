@@ -15,6 +15,19 @@ namespace CherryPicker
             return propertyDefaultsByTypesClone;
         }
 
+        public static void Set<T>(this Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType,
+            Dictionary<string, object> newPropertyDefaults)
+        {
+            var type = typeof(T);
+            if (!propertyDefaultsByType.ContainsKey(type))
+            {
+                propertyDefaultsByType.Add(type, new Dictionary<string, object>());
+            }
+
+            var existingPropertyDefaults = propertyDefaultsByType[type];
+            existingPropertyDefaults.Merge(newPropertyDefaults);
+        }
+
         public static void Merge(this Dictionary<string, object> currentPropertyDefaults, 
             Dictionary<string, object> newPropertyDefaults)
         {

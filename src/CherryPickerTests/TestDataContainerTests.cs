@@ -169,6 +169,27 @@ namespace CherryPickerTests
             Assert.True(person.Vehicle.Engine.Capacity == 3000);
         }
 
+        [Fact(Skip = "Clearing grandchildren or lower caches not working yet")]
+        public void When_a_grandchild_or_lower_reference_type_is_built_Then_any_previously_used_defaults_are_cleared_from_the_cache()
+        {
+            var engine = _container.Build<Engine>(
+                x => x.Set(e => e.Capacity).To(4000));
+
+            _container
+                .For<Vehicle>(
+                    x => x.Default(v => v.Make).To("BMW"),
+                    x => x.Default(v => v.Model).To("3 Series"))
+                .For<Engine>(
+                    x => x.Default(e => e.Capacity).To(3000));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.FirstName == null);
+            Assert.True(person.Vehicle.Make == "BMW");
+            Assert.True(person.Vehicle.Model == "3 Series");
+            Assert.True(person.Vehicle.Engine.Capacity == 3000);
+        }
+
         [Fact]
         public void When_building_objects_with_non_value_type_properties_Then_by_default_the_non_value_types_are_built_new_for_each_built_object()
         {

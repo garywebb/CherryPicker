@@ -13,7 +13,7 @@ namespace CherryPicker
     public class TestDataContainer : ITestDataContainer
     {
         private readonly Dictionary<Type, Dictionary<string, object>> _propertyDefaultsByType;
-        private readonly PropertySetterInstancePolicy _propertySetterInstancePolicy;
+        private StructureMapWrapper _structureMapWrapper;
         
         /// <summary>
         /// Constructor to create a TestDataContainer.
@@ -21,35 +21,21 @@ namespace CherryPicker
         public TestDataContainer()
         {
             _propertyDefaultsByType = new Dictionary<Type, Dictionary<string, object>>();
-
-            //The PropertySetterInstancePolicy is created once and shared among all
-            //child instances.
-            _propertySetterInstancePolicy = new PropertySetterInstancePolicy();
-            
-            //The container is created on first instantiation of the TestDataBuilder
-            //and shared among all child instances.
-            Container = new Container(x =>
-            {
-                x.Policies.Add(_propertySetterInstancePolicy);
-            });
+            _structureMapWrapper = new StructureMapWrapper(getPropertyDefaultsByType: () => _propertyDefaultsByType);
         }
 
-        /// <summary>
-        /// Private constructor used to build Child Container.
-        /// </summary>
         private TestDataContainer(Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType, 
-            PropertySetterInstancePolicy propertySetterInstancePolicy, IContainer container)
+            StructureMapWrapper structureMapWrapper)
         {
             _propertyDefaultsByType = propertyDefaultsByType;
-            _propertySetterInstancePolicy = propertySetterInstancePolicy;
-            Container = container;
+            _structureMapWrapper = structureMapWrapper;
         }
 
         /// <summary>
         /// StructureMap Container. Use it to configure any non-data related dependencies required when 
         /// building new objects.
         /// </summary>
-        public IContainer Container { get; private set; }
+        public IContainer Container => _structureMapWrapper.Container;
 
         /// <summary>
         /// Creates a child instance which inherits all previous configurations from its parent.
@@ -57,7 +43,7 @@ namespace CherryPicker
         /// <returns>Returns a new TestDataContainer.</returns>
         public TestDataContainer CreateChildInstance()
         {
-            return new TestDataContainer(_propertyDefaultsByType.Clone(), _propertySetterInstancePolicy, Container);
+            return new TestDataContainer(_propertyDefaultsByType.Clone(), _structureMapWrapper);
         }
 
         /// <summary>
@@ -69,7 +55,7 @@ namespace CherryPicker
         public TestDataContainer For<T>(params Action<Defaulter<T>>[] defaulterActions)
         {
             var newPropertyDefaults = GetPropertyDefaults(defaulterActions);
-            SetPropertyDefaults<T>(newPropertyDefaults);
+            _propertyDefaultsByType.Set<T>(newPropertyDefaults);
 
             return this;
         }
@@ -85,82 +71,24 @@ namespace CherryPicker
         {
             if (defaultOverrideActions.Any())
             {
-                var tempTestDataBuilder = CreateChildInstance();
-                return tempTestDataBuilder.BuildImpl(defaultOverrideActions);
-            }
-
-            return BuildImpl(defaultOverrideActions);
-        }
-
-        private T BuildImpl<T>(params Action<DefaultOverride<T>>[] defaultOverrideActions)
-        {
-            if (defaultOverrideActions.Any())
-            {
                 var newPropertyDefaults = GetPropertyDefaults(defaultOverrideActions);
-                SetPropertyDefaults<T>(newPropertyDefaults);
+
+                var tempPropertyDefaultsByType = _propertyDefaultsByType.Clone();
+                tempPropertyDefaultsByType.Set<T>(newPropertyDefaults);
+
+                return GetInstance<T>(tempPropertyDefaultsByType);
             }
 
-            var typesToRebuild = GetTypesToRebuildFrom(typeof(T));
-            //Flush the Container of all cached types to be used in building this object. Needed to ensure new 
-            //defaults are picked up.
-            foreach (var typeToRebuild in typesToRebuild)
+            return GetInstance<T>();
+        }
+
+        private T GetInstance<T>(Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType = null)
+        {
+            if (propertyDefaultsByType == null)
             {
-                Container.Configure(x => x.For(typeToRebuild).ClearAll());
+                propertyDefaultsByType = _propertyDefaultsByType;
             }
-
-            //Set the data builder just before getting the instance to let the property setter instance policy
-            //use the latest overrides for this type.
-            _propertySetterInstancePolicy.DataBuilder = this;
-
-            return Container.GetInstance<T>();
-        }
-
-        internal Dictionary<string, object> GetPropertyDefaults(Type pluginType)
-        {
-            var success = _propertyDefaultsByType.TryGetValue(pluginType, out var propertyDefaults);
-            if (success)
-            {
-                return propertyDefaults;
-            }
-
-            return new Dictionary<string, object>();
-        }
-
-        private void SetPropertyDefaults<T>(Dictionary<string, object> newPropertyDefaults)
-        {
-            var type = typeof(T);
-            if (IsNew(type))
-            {
-                Add(type);
-            }
-            var existingPropertyDefaults = _propertyDefaultsByType[type];
-            existingPropertyDefaults.Merge(newPropertyDefaults);
-        }
-
-        private bool IsNew(Type type)
-        {
-            return !_propertyDefaultsByType.ContainsKey(type);
-        }
-
-        private void Add(Type type)
-        {
-            _propertyDefaultsByType.Add(type, new Dictionary<string, object>());
-            Container.Configure(x =>
-            {
-                x.Policies.SetAllProperties(y => y.TypeMatches(innerType => innerType == type));
-            });
-        }
-
-        private IEnumerable<Type> GetTypesToRebuildFrom(Type buildType)
-        {
-            var nonValueTypePropertyInfos = buildType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(x => !x.PropertyType.GetTypeInfo().IsValueType && x.PropertyType != typeof(String) && x.CanWrite && x.GetSetMethod(false) != null && x.GetSetMethod().GetParameters().Length == 1);
-
-            yield return buildType;
-            foreach (var nonValueTypePropertyInfo in nonValueTypePropertyInfos)
-            {
-                yield return nonValueTypePropertyInfo.PropertyType;
-            }
+            return _structureMapWrapper.GetInstance<T>(propertyDefaultsByType);
         }
 
         private Dictionary<string, object> GetPropertyDefaults<T>(params Action<Defaulter<T>>[] defaulterActions)
@@ -215,7 +143,7 @@ namespace CherryPicker
             if (invalidlyOverridenProperties.Any())
             {
                 throw new Exception(BuildInvalidOverridesExceptionMessage(
-                    typeof(T), invalidlyOverridenProperties, isDefaultOverride: true));
+                    typeof(T), invalidlyOverridenProperties, isDefaultOverride: false));
             }
 
             return newPropertyDefaults;
