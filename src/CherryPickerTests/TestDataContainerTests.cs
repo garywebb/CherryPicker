@@ -143,7 +143,7 @@ namespace CherryPickerTests
 
             var person = _container.Build<Person>();
 
-            Assert.True(person.Vehicle != null);
+            Assert.True(person.Vehicle == null);
         }
 
         [Fact]

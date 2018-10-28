@@ -22,10 +22,6 @@ namespace CherryPicker
             Container = new Container(x =>
             {
                 x.Policies.Add(_propertySetterInstancePolicy);
-
-                var propertyDefaultsByType = getPropertyDefaultsByType();
-                x.Policies.SetAllProperties(y => y.TypeMatches(type =>
-                    propertyDefaultsByType.ContainsKey(type)));
             });
         }
 
@@ -37,38 +33,14 @@ namespace CherryPicker
 
         internal T GetInstance<T>(Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType)
         {
-            var typesToRebuild = GetTypesToRebuildFrom(typeof(T));
-            //Flush the Container of all cached types to be used in building this object. Needed to ensure new 
-            //defaults are picked up.
-            foreach (var typeToRebuild in typesToRebuild)
-            {
-                Container.Configure(x => x.For(typeToRebuild).ClearAll());
-            }
+            //Flush the Container of the cached values used in building this object.
+            Container.Configure(x => x.For(typeof(T)).ClearAll());
 
             //Set the data builder just before getting the instance to let the property setter instance policy
             //use the latest overrides for this type.
             _propertySetterInstancePolicy.PropertyDefaultsByType = propertyDefaultsByType;
 
             return Container.GetInstance<T>();
-        }
-
-        private IEnumerable<Type> GetTypesToRebuildFrom(Type buildType)
-        {
-            var nonValueTypePropertyInfos = 
-                buildType
-                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(x => 
-                           !x.PropertyType.GetTypeInfo().IsValueType && 
-                           x.PropertyType != typeof(String) && 
-                           x.CanWrite && 
-                           x.GetSetMethod(false) != null && 
-                           x.GetSetMethod().GetParameters().Length == 1);
-
-            yield return buildType;
-            foreach (var nonValueTypePropertyInfo in nonValueTypePropertyInfos)
-            {
-                yield return nonValueTypePropertyInfo.PropertyType;
-            }
         }
     }
 }
