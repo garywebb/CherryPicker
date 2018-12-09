@@ -11,7 +11,7 @@ namespace CherryPicker
     {
         private PropertySetterInstancePolicy _propertySetterInstancePolicy;
 
-        public StructureMapWrapper(Func<Dictionary<Type, Dictionary<string, object>>> getPropertyDefaultsByType)
+        public StructureMapWrapper()
         {
             //The PropertySetterInstancePolicy is created once and shared among all
             //child instances.
@@ -31,14 +31,19 @@ namespace CherryPicker
         /// </summary>
         public IContainer Container { get; private set; }
 
-        internal T GetInstance<T>(Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType)
+        internal T GetInstance<T>()
+        {
+            return GetInstance<T>(new Dictionary<string, object>());
+        }
+
+        internal T GetInstance<T>(Dictionary<string, object> propertyDefaults)
         {
             //Flush the Container of the cached values used in building this object.
             Container.Configure(x => x.For(typeof(T)).ClearAll());
 
             //Set the data builder just before getting the instance to let the property setter instance policy
             //use the latest overrides for this type.
-            _propertySetterInstancePolicy.PropertyDefaultsByType = propertyDefaultsByType;
+            _propertySetterInstancePolicy.SetDefaults<T>(propertyDefaults);
 
             return Container.GetInstance<T>();
         }

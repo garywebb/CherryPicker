@@ -21,7 +21,7 @@ namespace CherryPicker
         public TestDataContainer()
         {
             _propertyDefaultsByType = new Dictionary<Type, Dictionary<string, object>>();
-            _structureMapWrapper = new StructureMapWrapper(getPropertyDefaultsByType: () => _propertyDefaultsByType);
+            _structureMapWrapper = new StructureMapWrapper();
         }
 
         private TestDataContainer(Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType, 
@@ -88,7 +88,11 @@ namespace CherryPicker
             {
                 propertyDefaultsByType = _propertyDefaultsByType;
             }
-            return _structureMapWrapper.GetInstance<T>(propertyDefaultsByType);
+            if (propertyDefaultsByType.TryGetValue(typeof(T), out var propertyDefaults))
+            {
+                return _structureMapWrapper.GetInstance<T>(propertyDefaults);
+            }
+            return _structureMapWrapper.GetInstance<T>();
         }
 
         private Dictionary<string, object> GetPropertyDefaults<T>(params Action<Defaulter<T>>[] defaulterActions)

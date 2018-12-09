@@ -9,18 +9,31 @@ namespace CherryPicker
 {
     internal class PropertySetterInstancePolicy : ConfiguredInstancePolicy
     {
-        internal Dictionary<Type, Dictionary<string, object>> PropertyDefaultsByType { get; set; }
+        private Type _propertyDefaultsType;
+        private Dictionary<string, object> _propertyDefaults = new Dictionary<string, object>();
+
+        internal void SetDefaults<T>(Dictionary<string, object> propertyDefaults)
+        {
+            _propertyDefaults.Clear();
+            foreach (var propertyDefault in propertyDefaults)
+            {
+                _propertyDefaults.Add(propertyDefault.Key, propertyDefault.Value);
+            }
+            _propertyDefaultsType = typeof(T);
+        }
 
         protected override void apply(Type pluginType, IConfiguredInstance instance)
         {
-            if (PropertyDefaultsByType.TryGetValue(pluginType, out var propertyDefaults))
+            if (_propertyDefaultsType != pluginType)
             {
-                foreach (var propertyDefault in propertyDefaults)
-                {
-                    var property = instance.SettableProperties().FirstOrDefault(prop => prop.Name == propertyDefault.Key);
-                    var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                    instance.Dependencies.Add(property.Name, propertyType, propertyDefault.Value);
-                }
+                return;
+            }
+
+            foreach (var propertyDefault in _propertyDefaults)
+            {
+                var property = instance.SettableProperties().FirstOrDefault(prop => prop.Name == propertyDefault.Key);
+                var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                instance.Dependencies.Add(property.Name, propertyType, propertyDefault.Value);
             }
         }
     }
