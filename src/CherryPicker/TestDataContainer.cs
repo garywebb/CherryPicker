@@ -14,6 +14,7 @@ namespace CherryPicker
     {
         private readonly Dictionary<Type, Dictionary<string, object>> _propertyDefaultsByType;
         private StructureMapWrapper _structureMapWrapper;
+        private readonly object _missing = new object();
         
         /// <summary>
         /// Constructor to create a TestDataContainer.
@@ -97,60 +98,62 @@ namespace CherryPicker
 
         private Dictionary<string, object> GetPropertyDefaults<T>(params Action<Defaulter<T>>[] defaulterActions)
         {
-            var invalidlyOverridenProperties = new List<string>();
             var newPropertyDefaults = new Dictionary<string, object>();
             foreach (var defaulterAction in defaulterActions)
             {
-                var wasCallbackCalled = false;
-                var defaulter = new Defaulter<T>((propertyName, propertyValue) =>
+                var defaulter = new Defaulter<T>();
+                defaulter.OnPropertyNameSet = propertyName =>
                 {
-                    wasCallbackCalled = true;
-                    newPropertyDefaults.Add(propertyName, propertyValue);
-                });
-                defaulterAction(defaulter);
+                    newPropertyDefaults[propertyName] = _missing;
+                };
+                defaulter.OnPropertyValueSet = (propertyName, propertyValue) =>
+                {
+                    newPropertyDefaults[propertyName] = propertyValue;
+                };
 
-                if (!wasCallbackCalled)
-                {
-                    invalidlyOverridenProperties.Add(defaulter.PropertyName);
-                }
+                defaulterAction(defaulter);
             };
 
-            if (invalidlyOverridenProperties.Any())
-            {
-                throw new Exception(BuildInvalidOverridesExceptionMessage(
-                    typeof(T), invalidlyOverridenProperties, isDefaultOverride: true));
-            }
+            ReportInvalidProperties(typeof(T), newPropertyDefaults, isDefaultOverride: true);
 
             return newPropertyDefaults;
         }
 
         private Dictionary<string, object> GetPropertyDefaults<T>(params Action<DefaultOverride<T>>[] defaultOverrideActions)
         {
-            var invalidlyOverridenProperties = new List<string>();
             var newPropertyDefaults = new Dictionary<string, object>();
             foreach (var defaultOverrideAction in defaultOverrideActions)
             {
-                var wasCallbackCalled = false;
-                var defaultOverrider = new DefaultOverride<T>((propertyName, propertyValue) =>
+                var defaultOverrider = new DefaultOverride<T>();
+                defaultOverrider.OnPropertyNameSet = propertyName =>
                 {
-                    wasCallbackCalled = true;
-                    newPropertyDefaults.Add(propertyName, propertyValue);
-                });
+                    newPropertyDefaults[propertyName] = _missing;
+                };
+                defaultOverrider.OnPropertyValueSet = (propertyName, propertyValue) =>
+                {
+                    newPropertyDefaults[propertyName] = propertyValue;
+                };
                 defaultOverrideAction(defaultOverrider);
-
-                if (!wasCallbackCalled)
-                {
-                    invalidlyOverridenProperties.Add(defaultOverrider.PropertyName);
-                }
             };
 
-            if (invalidlyOverridenProperties.Any())
-            {
-                throw new Exception(BuildInvalidOverridesExceptionMessage(
-                    typeof(T), invalidlyOverridenProperties, isDefaultOverride: false));
-            }
+            ReportInvalidProperties(typeof(T), newPropertyDefaults, isDefaultOverride: false);
 
             return newPropertyDefaults;
+        }
+
+        private void ReportInvalidProperties(
+            Type type, Dictionary<string, object> propertyDefaults, bool isDefaultOverride)
+        {
+            var invalidlyOverridenPropertyNamesQuery =
+                from propertyDefault in propertyDefaults
+                where propertyDefault.Value == _missing
+                select propertyDefault.Key;
+            var invalidlyOverridenPropertyNames = invalidlyOverridenPropertyNamesQuery.ToList();
+            if (invalidlyOverridenPropertyNames.Any())
+            {
+                throw new Exception(BuildInvalidOverridesExceptionMessage(
+                    type, invalidlyOverridenPropertyNames, isDefaultOverride));
+            }
         }
 
         private string BuildInvalidOverridesExceptionMessage(

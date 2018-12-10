@@ -109,6 +109,28 @@ namespace CherryPickerTests
             Assert.True(person.Age == 170);
         }
 
+        [Fact]
+        public void When_a_property_is_defaulted_twice_Then_the_second_default_is_used()
+        {
+            _container.For<Person>(
+                x => x.Default(p => p.FirstName).To("Gary"),
+                x => x.Default(p => p.FirstName).To("Matthew"));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.FirstName == "Matthew");
+        }
+
+        [Fact]
+        public void When_a_property_is_set_twice_Then_the_second_override_is_used()
+        {
+            var person = _container.Build<Person>(x => x
+                .Set(p => p.FirstName).To("Gary")
+                .Set(p => p.FirstName).To("Matthew"));
+
+            Assert.True(person.FirstName == "Matthew");
+        }
+
         [Fact(Skip = "Clearing grandchildren or lower caches not working yet")]
         public void When_a_grandchild_or_lower_reference_type_is_built_Then_any_previously_used_defaults_are_cleared_from_the_cache()
         {
@@ -320,10 +342,28 @@ namespace CherryPickerTests
         }
 
         [Fact]
+        public void When_a_default_is_not_set_as_the_second_method_call_Then_an_exception_is_thrown()
+        {
+            Assert.Throws<Exception>(() =>
+                _container.For<Person>(x => x
+                    .Default(p => p.FirstName).To("A Name")
+                    .Default(p => p.LastName)));
+        }
+
+        [Fact]
         public void When_a_default_override_is_not_set_Then_an_exception_is_thrown()
         {
             Assert.Throws<Exception>(() =>
                 _container.Build<Person>(x => x.Set(p => p.FirstName)));
+        }
+
+        [Fact]
+        public void When_a_default_override_is_not_set_as_the_second_method_call_Then_an_exception_is_thrown()
+        {
+            Assert.Throws<Exception>(() =>
+                _container.Build<Person>(x => x
+                    .Set(p => p.FirstName).To("A Name")
+                    .Set(p => p.LastName)));
         }
 
         [Fact]

@@ -8,13 +8,8 @@ namespace CherryPicker
 {
     public class Defaulter<T>
     {
-        private readonly Action<string, object> _populatePropertyDefaultsCallback;
-        internal string PropertyName { get; private set; }
-
-        public Defaulter(Action<string, object> populatePropertyDefaultsCallback)
-        {
-            _populatePropertyDefaultsCallback = populatePropertyDefaultsCallback;
-        }
+        internal Action<string> OnPropertyNameSet { get; set; }
+        internal Action<string, object> OnPropertyValueSet { get; set; }
 
         public DefaultValue<T, TSetterType> Default<TSetterType>(Expression<Func<T, TSetterType>> expression)
         {
@@ -23,8 +18,9 @@ namespace CherryPicker
                 throw new ArgumentNullException(nameof(expression));
             }
 
-            PropertyName = expression.GetPropertyName();
-            return new DefaultValue<T, TSetterType>(PropertyName, _populatePropertyDefaultsCallback, this);
+            var propertyName = expression.GetPropertyName();
+            OnPropertyNameSet(propertyName);
+            return new DefaultValue<T, TSetterType>(propertyName, OnPropertyValueSet, this);
         }
     }
 }
