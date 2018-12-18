@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace CherryPicker
+namespace CherryPicker.PropertyValueBuilders
 {
     internal class EmptyPropertyValueBuilder : PropertyValueBuilder
     {
