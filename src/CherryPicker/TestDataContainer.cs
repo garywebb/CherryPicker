@@ -12,20 +12,19 @@ namespace CherryPicker
     /// </summary>
     public class TestDataContainer : ITestDataContainer
     {
-        private readonly Dictionary<Type, Dictionary<string, object>> _propertyDefaultsByType;
+        private readonly Dictionary<Type, Dictionary<string, PropertyValueBuilder>> _propertyDefaultsByType;
         private StructureMapWrapper _structureMapWrapper;
-        private readonly object _missing = new object();
         
         /// <summary>
         /// Constructor to create a TestDataContainer.
         /// </summary>
         public TestDataContainer()
         {
-            _propertyDefaultsByType = new Dictionary<Type, Dictionary<string, object>>();
+            _propertyDefaultsByType = new Dictionary<Type, Dictionary<string, PropertyValueBuilder>>();
             _structureMapWrapper = new StructureMapWrapper();
         }
 
-        private TestDataContainer(Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType, 
+        private TestDataContainer(Dictionary<Type, Dictionary<string, PropertyValueBuilder>> propertyDefaultsByType, 
             StructureMapWrapper structureMapWrapper)
         {
             _propertyDefaultsByType = propertyDefaultsByType;
@@ -83,32 +82,31 @@ namespace CherryPicker
             return GetInstance<T>();
         }
 
-        private T GetInstance<T>(Dictionary<Type, Dictionary<string, object>> propertyDefaultsByType = null)
+        private T GetInstance<T>(Dictionary<Type, Dictionary<string, PropertyValueBuilder>> propertyDefaultsByType = null)
         {
             if (propertyDefaultsByType == null)
             {
                 propertyDefaultsByType = _propertyDefaultsByType;
             }
-            if (propertyDefaultsByType.TryGetValue(typeof(T), out var propertyDefaults))
-            {
-                return _structureMapWrapper.GetInstance<T>(propertyDefaults);
-            }
-            return _structureMapWrapper.GetInstance<T>();
+            var instance = propertyDefaultsByType.TryGetValue(typeof(T), out var propertyDefaults)
+                ? _structureMapWrapper.GetInstance<T>(propertyDefaults)
+                : _structureMapWrapper.GetInstance<T>();
+            return instance;
         }
 
-        private Dictionary<string, object> GetPropertyDefaults<T>(params Action<Defaulter<T>>[] defaulterActions)
+        private Dictionary<string, PropertyValueBuilder> GetPropertyDefaults<T>(params Action<Defaulter<T>>[] defaulterActions)
         {
-            var newPropertyDefaults = new Dictionary<string, object>();
+            var newPropertyDefaults = new Dictionary<string, PropertyValueBuilder>();
             foreach (var defaulterAction in defaulterActions)
             {
                 var defaulter = new Defaulter<T>();
                 defaulter.OnPropertyNameSet = propertyName =>
                 {
-                    newPropertyDefaults[propertyName] = _missing;
+                    newPropertyDefaults[propertyName] = EmptyPropertyValueBuilder.Instance;
                 };
                 defaulter.OnPropertyValueSet = (propertyName, propertyValue) =>
                 {
-                    newPropertyDefaults[propertyName] = propertyValue;
+                    newPropertyDefaults[propertyName] = new SingleValuePropertyValueBuilder(propertyValue);
                 };
 
                 defaulterAction(defaulter);
@@ -119,19 +117,19 @@ namespace CherryPicker
             return newPropertyDefaults;
         }
 
-        private Dictionary<string, object> GetPropertyDefaults<T>(params Action<DefaultOverride<T>>[] defaultOverrideActions)
+        private Dictionary<string, PropertyValueBuilder> GetPropertyDefaults<T>(params Action<DefaultOverride<T>>[] defaultOverrideActions)
         {
-            var newPropertyDefaults = new Dictionary<string, object>();
+            var newPropertyDefaults = new Dictionary<string, PropertyValueBuilder>();
             foreach (var defaultOverrideAction in defaultOverrideActions)
             {
                 var defaultOverrider = new DefaultOverride<T>();
                 defaultOverrider.OnPropertyNameSet = propertyName =>
                 {
-                    newPropertyDefaults[propertyName] = _missing;
+                    newPropertyDefaults[propertyName] = EmptyPropertyValueBuilder.Instance;
                 };
                 defaultOverrider.OnPropertyValueSet = (propertyName, propertyValue) =>
                 {
-                    newPropertyDefaults[propertyName] = propertyValue;
+                    newPropertyDefaults[propertyName] = new SingleValuePropertyValueBuilder(propertyValue);
                 };
                 defaultOverrideAction(defaultOverrider);
             };
@@ -142,11 +140,11 @@ namespace CherryPicker
         }
 
         private void ReportInvalidProperties(
-            Type type, Dictionary<string, object> propertyDefaults, bool isDefaultOverride)
+            Type type, Dictionary<string, PropertyValueBuilder> propertyDefaults, bool isDefaultOverride)
         {
             var invalidlyOverridenPropertyNamesQuery =
                 from propertyDefault in propertyDefaults
-                where propertyDefault.Value == _missing
+                where propertyDefault.Value == EmptyPropertyValueBuilder.Instance
                 select propertyDefault.Key;
             var invalidlyOverridenPropertyNames = invalidlyOverridenPropertyNamesQuery.ToList();
             if (invalidlyOverridenPropertyNames.Any())

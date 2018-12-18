@@ -10,9 +10,9 @@ namespace CherryPicker
     internal class PropertySetterInstancePolicy : ConfiguredInstancePolicy
     {
         private Type _propertyDefaultsType;
-        private Dictionary<string, object> _propertyDefaults = new Dictionary<string, object>();
+        private Dictionary<string, PropertyValueBuilder> _propertyDefaults = new Dictionary<string, PropertyValueBuilder>();
 
-        internal void SetDefaults<T>(Dictionary<string, object> propertyDefaults)
+        internal void SetDefaults<T>(Dictionary<string, PropertyValueBuilder> propertyDefaults)
         {
             _propertyDefaults.Clear();
             foreach (var propertyDefault in propertyDefaults)
@@ -26,14 +26,22 @@ namespace CherryPicker
         {
             if (_propertyDefaultsType != pluginType)
             {
-                return;
+                throw new ArgumentException($"Unexpected type being built. Expected: {_propertyDefaultsType.Name}, but instead received: {pluginType.Name}. This is an issue with CherryPicker, please raise an issue with recreatable steps in order for it to be fixed. Thank you!", nameof(pluginType));
             }
 
             foreach (var propertyDefault in _propertyDefaults)
             {
+                var propertyValue = propertyDefault.Value.Build();
+                //PropertyValue can be null when the user specifies the property value as null
+                //StructureMap throws an exception when a null value is passed into its Dependencies
+                if (propertyValue == null)
+                {
+                    continue;
+                }
+
                 var property = instance.SettableProperties().FirstOrDefault(prop => prop.Name == propertyDefault.Key);
                 var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                instance.Dependencies.Add(property.Name, propertyType, propertyDefault.Value);
+                instance.Dependencies.Add(property.Name, propertyType, propertyValue);
             }
         }
     }

@@ -33,10 +33,10 @@ namespace CherryPicker
 
         internal T GetInstance<T>()
         {
-            return GetInstance<T>(new Dictionary<string, object>());
+            return GetInstance<T>(new Dictionary<string, PropertyValueBuilder>());
         }
 
-        internal T GetInstance<T>(Dictionary<string, object> propertyDefaults)
+        internal T GetInstance<T>(Dictionary<string, PropertyValueBuilder> propertyDefaults)
         {
             //Flush the Container of the cached values used in building this object.
             Container.Configure(x => x.For(typeof(T)).ClearAll());
