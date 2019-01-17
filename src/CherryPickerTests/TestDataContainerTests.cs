@@ -131,27 +131,6 @@ namespace CherryPickerTests
             Assert.True(person.FirstName == "Matthew");
         }
 
-        [Fact(Skip = "Clearing grandchildren or lower caches not working yet")]
-        public void When_a_grandchild_or_lower_reference_type_is_built_Then_any_previously_used_defaults_are_cleared_from_the_cache()
-        {
-            var engine = _container.Build<Engine>(
-                x => x.Set(e => e.Capacity).To(4000));
-
-            _container
-                .For<Vehicle>(
-                    x => x.Default(v => v.Make).To("BMW"),
-                    x => x.Default(v => v.Model).To("3 Series"))
-                .For<Engine>(
-                    x => x.Default(e => e.Capacity).To(3000));
-
-            var person = _container.Build<Person>();
-
-            Assert.True(person.FirstName == null);
-            Assert.True(person.Vehicle.Make == "BMW");
-            Assert.True(person.Vehicle.Model == "3 Series");
-            Assert.True(person.Vehicle.Engine.Capacity == 3000);
-        }
-
         #endregion
 
         #region Auto building and self building
@@ -166,6 +145,75 @@ namespace CherryPickerTests
             var person = _container.Build<Person>();
 
             Assert.True(person.Vehicle == null);
+        }
+
+        [Fact]
+        public void When_building_objects_with_auto_built_reference_type_properties_Then_a_new_object_is_built_for_each_property_default()
+        {
+            _container
+                .For<Person>(x => x
+                    .Default(p => p.Vehicle).ToAutoBuild())
+                .For<Vehicle>(x => x
+                    .Default(v => v.Make).To("BMW")
+                    .Default(v => v.Model).To("3 Series"));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.Vehicle != null);
+            Assert.True(person.Vehicle.Make == "BMW");
+        }
+
+        [Fact]
+        public void When_building_objects_with_auto_built_reference_type_properties_Then_a_new_object_is_built_for_each_property_set()
+        {
+            _container
+                .For<Vehicle>(x => x
+                    .Default(v => v.Make).To("BMW")
+                    .Default(v => v.Model).To("3 Series"));
+
+            var person = _container.Build<Person>(x => x
+                .Set(p => p.Vehicle).ToAutoBuild());
+
+            Assert.True(person.Vehicle != null);
+            Assert.True(person.Vehicle.Make == "BMW");
+        }
+
+        [Fact]
+        public void When_building_objects_with_auto_built_reference_type_properties_Then_by_default_the_reference_types_are_built_new_for_each_built_object_for_default()
+        {
+            _container
+                .For<Person>(x => x
+                    .Default(p => p.Vehicle).ToAutoBuild())
+                .For<Vehicle>(x => x
+                    .Default(v => v.Make).To("BMW")
+                    .Default(v => v.Model).To("3 Series"));
+
+            var person1 = _container.Build<Person>();
+            var person2 = _container.Build<Person>();
+
+            Assert.True(person1.Vehicle != null);
+            Assert.True(person2.Vehicle != null);
+            Assert.True(person1.Vehicle.Make == "BMW");
+            Assert.True(person2.Vehicle.Make == "BMW");
+            Assert.True(person1.Vehicle != person2.Vehicle);
+        }
+
+        [Fact]
+        public void When_building_objects_with_auto_built_reference_type_properties_Then_by_default_the_reference_types_are_built_new_for_each_built_object_for_set()
+        {
+            _container
+                .For<Vehicle>(x => x
+                    .Default(v => v.Make).To("BMW")
+                    .Default(v => v.Model).To("3 Series"));
+
+            var person1 = _container.Build<Person>(x => x
+                .Set(p => p.Vehicle).ToAutoBuild());
+            var person2 = _container.Build<Person>(x => x
+                .Set(p => p.Vehicle).ToAutoBuild());
+
+            Assert.True(person1.Vehicle != null);
+            Assert.True(person2.Vehicle != null);
+            Assert.True(person1.Vehicle != person2.Vehicle);
         }
 
         [Fact]
@@ -210,6 +258,119 @@ namespace CherryPickerTests
             Assert.True(person.FirstName == null);
             Assert.True(person.Vehicle.Make == "Nissan");
             Assert.True(person.Vehicle.Model == "350Z");
+        }
+
+        [Fact]
+        public void When_a_grandchild_or_lower_reference_type_is_built_Then_any_previously_used_defaults_are_cleared_from_the_cache()
+        {
+            var firstBuiltVehicle = _container.Build<Vehicle>(x => x
+                .Set(v => v.Make).To("BMW")
+                .Set(v => v.Model).To("3 Series"));
+
+            _container
+                .For<Person>(x => x
+                    .Default(p => p.Vehicle).ToAutoBuild())
+                .For<Vehicle>(x => x
+                    .Default(v => v.Make).To("Audi")
+                    .Default(v => v.Model).To("S4"));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.Vehicle.Make == "Audi");
+            Assert.True(person.Vehicle.Model == "S4");
+        }
+
+        [Fact]
+        public void When_an_object_is_built_Then_all_reference_type_properties_in_the_object_tree_set_to_auto_build_are_built()
+        {
+            _container
+                .For<Person>(x => x
+                    .Default(p => p.Vehicle).ToAutoBuild())
+                .For<Vehicle>(x => x
+                    .Default(v => v.Make).To("BMW")
+                    .Default(v => v.Model).To("3 Series")
+                    .Default(v => v.Engine).ToAutoBuild())
+                .For<Engine>(x => x
+                    .Default(e => e.Capacity).To(3000));
+
+            var person = _container.Build<Person>();
+
+            Assert.True(person.FirstName == null);
+            Assert.True(person.Vehicle.Make == "BMW");
+            Assert.True(person.Vehicle.Model == "3 Series");
+            Assert.True(person.Vehicle.Engine.Capacity == 3000);
+        }
+
+        [Fact]
+        public void When_auto_building_an_interface_property_Then_the_concrete_type_must_be_specified_and_defaulted()
+        {
+            _container
+                .For<AnInterfaceImplementation>(x => x
+                    .Default(a => a.AnInt).To(3))
+                .For<ClassWithInterfaceProperty>(x => x
+                    .Default(c => c.AnInterface).ToAutoBuild<AnInterfaceImplementation>());
+
+            var classWithInterfaceProperty = _container.Build<ClassWithInterfaceProperty>();
+
+            Assert.True(classWithInterfaceProperty.AnInterface != null);
+            Assert.True(classWithInterfaceProperty.AnInterface.AnInt == 3);
+        }
+
+        [Fact]
+        public void When_auto_building_an_interface_property_Then_defaults_for_the_concrete_implementing_type_are_used()
+        {
+            _container
+                .For<AnInterfaceImplementation>(x => x
+                    .Default(i => i.AnInt).To(3));
+
+            var classWithInterfaceProperty = _container
+                .Build<ClassWithInterfaceProperty>(x => x
+                    .Set(c => c.AnInterface).ToAutoBuild<AnInterfaceImplementation>());
+
+            Assert.True(classWithInterfaceProperty.AnInterface != null);
+            Assert.True(classWithInterfaceProperty.AnInterface.AnInt == 3);
+        }
+
+        [Fact]
+        public void When_auto_building_a_value_type_Then_an_exception_is_thrown()
+        {
+            Assert.Throws<Exception>(() => 
+                _container.For<AllValueTypesClass>(x => x
+                    .Default(p => p.Int).ToAutoBuild()));
+        }
+
+        [Fact]
+        public void When_auto_building_a_value_type_Then_an_exception_is_thrown_all()
+        {
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Int).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullInt).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Short).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullShort).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Bool).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullBool).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Byte).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullByte).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Char).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullChar).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Decimal).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullDecimal).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Double).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullDouble).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.MyEnum).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullMyEnum).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Float).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullFloat).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.Long).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullLong).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.SByte).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullSByte).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.UInt).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullUInt).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.ULong).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullULong).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.UShort).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.NullUShort).ToAutoBuild()));
+            Assert.Throws<Exception>(() => _container.Build<AllValueTypesClass>(x => x.Set(p => p.String).ToAutoBuild()));
         }
 
         #endregion

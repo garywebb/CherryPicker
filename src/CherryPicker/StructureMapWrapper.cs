@@ -32,21 +32,17 @@ namespace CherryPicker
         /// </summary>
         public IContainer Container { get; private set; }
 
-        internal T GetInstance<T>()
-        {
-            return GetInstance<T>(new Dictionary<string, PropertyValueBuilder>());
-        }
-
-        internal T GetInstance<T>(Dictionary<string, PropertyValueBuilder> propertyDefaults)
+        internal object GetInstance(
+             Type propertyDefaultsType, Dictionary<string, PropertyValueBuilder> propertyDefaults)
         {
             //Flush the Container of the cached values used in building this object.
-            Container.Configure(x => x.For(typeof(T)).ClearAll());
+            Container.Configure(x => x.For(propertyDefaultsType).ClearAll());
 
             //Set the data builder just before getting the instance to let the property setter instance policy
             //use the latest overrides for this type.
-            _propertySetterInstancePolicy.SetDefaults<T>(propertyDefaults);
+            _propertySetterInstancePolicy.SetDefaults(propertyDefaultsType, propertyDefaults);
 
-            return Container.GetInstance<T>();
+            return Container.GetInstance(propertyDefaultsType);
         }
     }
 }

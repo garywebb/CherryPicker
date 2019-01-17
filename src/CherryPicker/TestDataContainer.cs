@@ -9,10 +9,14 @@ using System.Text;
 namespace CherryPicker
 {
     /// <summary>
-    /// 
+    /// The main class of the system. It contains the defaults for all buildable
+    /// test data objects and the methods for adding defaults and building the objects.
     /// </summary>
     public class TestDataContainer : ITestDataContainer
     {
+        //Reused values, stored at the class level for speed and memory optimisation
+        private static readonly Type StringType = typeof(string);
+
         private readonly Dictionary<Type, Dictionary<string, PropertyValueBuilder>> _propertyDefaultsByType;
         private StructureMapWrapper _structureMapWrapper;
         
@@ -56,7 +60,8 @@ namespace CherryPicker
         public TestDataContainer For<T>(params Action<Defaulter<T>>[] defaulterActions)
         {
             var newPropertyDefaults = GetPropertyDefaults(defaulterActions);
-            _propertyDefaultsByType.Set<T>(newPropertyDefaults);
+            var newPropertyDefaultsType = typeof(T);
+            _propertyDefaultsByType.CombineWith(newPropertyDefaultsType, newPropertyDefaults);
 
             return this;
         }
@@ -70,28 +75,31 @@ namespace CherryPicker
         /// <returns>The built and populated object.</returns>
         public T Build<T>(params Action<DefaultOverride<T>>[] defaultOverrideActions)
         {
+            var newPropertyDefaultsType = typeof(T);
+            var propertyDefaults = _propertyDefaultsByType.GetValue(newPropertyDefaultsType);
+
             if (defaultOverrideActions.Any())
             {
                 var newPropertyDefaults = GetPropertyDefaults(defaultOverrideActions);
-
-                var tempPropertyDefaultsByType = _propertyDefaultsByType.Clone();
-                tempPropertyDefaultsByType.Set<T>(newPropertyDefaults);
-
-                return GetInstance<T>(tempPropertyDefaultsByType);
+                var tempPropertyDefaults = propertyDefaults.Clone();
+                tempPropertyDefaults.CombineWith(newPropertyDefaults);
+                propertyDefaults = tempPropertyDefaults;
             }
 
-            return GetInstance<T>();
+            return (T)GetInstance(newPropertyDefaultsType, propertyDefaults);
         }
 
-        private T GetInstance<T>(Dictionary<Type, Dictionary<string, PropertyValueBuilder>> propertyDefaultsByType = null)
+        //Seperated out into its method rather than set the propertyDefaultsByType parameter default to null
+        //as the method is called by AutoBuildPropertyValueBuilder
+        private object GetInstance(Type propertyDefaultsType)
         {
-            if (propertyDefaultsByType == null)
-            {
-                propertyDefaultsByType = _propertyDefaultsByType;
-            }
-            var instance = propertyDefaultsByType.TryGetValue(typeof(T), out var propertyDefaults)
-                ? _structureMapWrapper.GetInstance<T>(propertyDefaults)
-                : _structureMapWrapper.GetInstance<T>();
+            var propertyDefaults = _propertyDefaultsByType.GetValue(propertyDefaultsType);
+            return GetInstance(propertyDefaultsType, propertyDefaults);
+        }
+
+        private object GetInstance(Type propertyDefaultsType, Dictionary<string, PropertyValueBuilder> propertyDefaults)
+        {
+            var instance = _structureMapWrapper.GetInstance(propertyDefaultsType, propertyDefaults);
             return instance;
         }
 
@@ -109,11 +117,15 @@ namespace CherryPicker
                 {
                     newPropertyDefaults[propertyName] = new SingleValuePropertyValueBuilder(propertyValue);
                 };
-
+                defaulter.OnPropertyValueSetToAuto = (propertyName, propertyValueType) =>
+                {
+                    ThrowExceptionIfNotReferenceType(propertyValueType, propertyName);
+                    newPropertyDefaults[propertyName] = new AutoBuildPropertyValueBuilder(propertyValueType, GetInstance);
+                };
                 defaulterAction(defaulter);
             };
 
-            ReportInvalidProperties(typeof(T), newPropertyDefaults, isDefaultOverride: true);
+            ThrowExceptionIfAnyInvalidProperties(typeof(T), newPropertyDefaults, isDefaultOverride: true);
 
             return newPropertyDefaults;
         }
@@ -132,15 +144,29 @@ namespace CherryPicker
                 {
                     newPropertyDefaults[propertyName] = new SingleValuePropertyValueBuilder(propertyValue);
                 };
+                defaultOverrider.OnPropertyValueSetToAuto = (propertyName, propertyValueType) =>
+                {
+                    ThrowExceptionIfNotReferenceType(propertyValueType, propertyName);
+                    newPropertyDefaults[propertyName] = new AutoBuildPropertyValueBuilder(propertyValueType, GetInstance);
+                };
                 defaultOverrideAction(defaultOverrider);
             };
 
-            ReportInvalidProperties(typeof(T), newPropertyDefaults, isDefaultOverride: false);
+            ThrowExceptionIfAnyInvalidProperties(typeof(T), newPropertyDefaults, isDefaultOverride: false);
 
             return newPropertyDefaults;
         }
 
-        private void ReportInvalidProperties(
+        private void ThrowExceptionIfNotReferenceType(Type type, string propertyName)
+        {
+            if (type.GetTypeInfo().IsValueType ||
+                type == StringType)
+            {
+                throw new Exception($"Only reference types are currently supported for use with ToAutoBuild. Please provide a value for the property {propertyName} using Default or Set.");
+            }
+        }
+
+        private void ThrowExceptionIfAnyInvalidProperties(
             Type type, Dictionary<string, PropertyValueBuilder> propertyDefaults, bool isDefaultOverride)
         {
             var invalidlyOverridenPropertyNamesQuery =

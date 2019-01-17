@@ -10,6 +10,7 @@ namespace CherryPicker
     {
         internal Action<string> OnPropertyNameSet { get; set; }
         internal Action<string, object> OnPropertyValueSet { get; set; }
+        internal Action<string, Type> OnPropertyValueSetToAuto { get; set; }
 
         public DefaultOverrideValue<T, TSetterType> Set<TSetterType>(Expression<Func<T, TSetterType>> expression)
         {
@@ -20,7 +21,8 @@ namespace CherryPicker
 
             var propertyName = expression.GetPropertyName();
             OnPropertyNameSet(propertyName);
-            return new DefaultOverrideValue<T, TSetterType>(propertyName, OnPropertyValueSet, this);
+            return new DefaultOverrideValue<T, TSetterType>(
+                propertyName, OnPropertyValueSet, OnPropertyValueSetToAuto, this);
         }
     }
 }

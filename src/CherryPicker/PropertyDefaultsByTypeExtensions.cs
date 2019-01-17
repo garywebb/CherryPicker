@@ -7,6 +7,9 @@ namespace CherryPicker
 {
     internal static class PropertyDefaultsByTypeExtensions
     {
+        //Reused values, stored at the class level for speed and memory optimisation
+        private static readonly Dictionary<string, PropertyValueBuilder> EmptyPropertyDefaults = new Dictionary<string, PropertyValueBuilder>();
+
         public static Dictionary<Type, Dictionary<string, PropertyValueBuilder>> Clone(this Dictionary<Type, Dictionary<string, PropertyValueBuilder>> propertyDefaultsByTypes)
         {
             var propertyDefaultsByTypesClone = propertyDefaultsByTypes.ToDictionary(
@@ -15,25 +18,41 @@ namespace CherryPicker
             return propertyDefaultsByTypesClone;
         }
 
-        public static void Set<T>(this Dictionary<Type, Dictionary<string, PropertyValueBuilder>> propertyDefaultsByType,
+        public static Dictionary<string, PropertyValueBuilder> GetValue(this Dictionary<Type, Dictionary<string, PropertyValueBuilder>> propertyDefaultsByType,
+            Type propertyDefaultsType)
+        {
+            var isExisting = propertyDefaultsByType.TryGetValue(propertyDefaultsType, out var propertyDefaults);
+            var returnPropertyDefaults = isExisting ? propertyDefaults : EmptyPropertyDefaults;
+            return returnPropertyDefaults;
+        }
+
+        public static void CombineWith(
+            this Dictionary<Type, Dictionary<string, PropertyValueBuilder>> existingPropertyDefaultsByType,
+            Type newPropertyDefaultsType, 
             Dictionary<string, PropertyValueBuilder> newPropertyDefaults)
         {
-            var type = typeof(T);
-            if (!propertyDefaultsByType.ContainsKey(type))
+            if (!existingPropertyDefaultsByType.ContainsKey(newPropertyDefaultsType))
             {
-                propertyDefaultsByType.Add(type, newPropertyDefaults.Clone());
+                existingPropertyDefaultsByType.Add(newPropertyDefaultsType, newPropertyDefaults.Clone());
             }
             else
             {
-                var existingPropertyDefaults = propertyDefaultsByType[type];
-                foreach (var newPropertyDefault in newPropertyDefaults)
-                {
-                    existingPropertyDefaults[newPropertyDefault.Key] = newPropertyDefault.Value;
-                }
+                var existingPropertyDefaults = existingPropertyDefaultsByType[newPropertyDefaultsType];
+                existingPropertyDefaults.CombineWith(newPropertyDefaults);
             }
         }
 
-        private static Dictionary<string, PropertyValueBuilder> Clone(this Dictionary<string, PropertyValueBuilder> propertyDefaults)
+        public static void CombineWith(
+            this Dictionary<string, PropertyValueBuilder> existingPropertyDefaults,
+            Dictionary<string, PropertyValueBuilder> newPropertyDefaults)
+        {
+            foreach (var newPropertyDefault in newPropertyDefaults)
+            {
+                existingPropertyDefaults[newPropertyDefault.Key] = newPropertyDefault.Value;
+            }
+        }
+
+        public static Dictionary<string, PropertyValueBuilder> Clone(this Dictionary<string, PropertyValueBuilder> propertyDefaults)
         {
             var propertyDefaultsClone = propertyDefaults.ToDictionary(
                 propertyDefault => propertyDefault.Key,

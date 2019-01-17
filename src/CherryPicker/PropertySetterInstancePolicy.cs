@@ -13,14 +13,11 @@ namespace CherryPicker
         private Type _propertyDefaultsType;
         private Dictionary<string, PropertyValueBuilder> _propertyDefaults = new Dictionary<string, PropertyValueBuilder>();
 
-        internal void SetDefaults<T>(Dictionary<string, PropertyValueBuilder> propertyDefaults)
+        internal void SetDefaults(Type propertyDefaultsType, Dictionary<string, PropertyValueBuilder> propertyDefaults)
         {
             _propertyDefaults.Clear();
-            foreach (var propertyDefault in propertyDefaults)
-            {
-                _propertyDefaults.Add(propertyDefault.Key, propertyDefault.Value);
-            }
-            _propertyDefaultsType = typeof(T);
+            _propertyDefaults.CombineWith(propertyDefaults);
+            _propertyDefaultsType = propertyDefaultsType;
         }
 
         protected override void apply(Type pluginType, IConfiguredInstance instance)
@@ -30,7 +27,11 @@ namespace CherryPicker
                 throw new ArgumentException($"Unexpected type being built. Expected: {_propertyDefaultsType.Name}, but instead received: {pluginType.Name}. This is an issue with CherryPicker, please raise an issue with recreatable steps in order for it to be fixed. Thank you!", nameof(pluginType));
             }
 
-            foreach (var propertyDefault in _propertyDefaults)
+            //Take a Clone of the defaults as they are Cleared when a property is set to AutoBuild
+            //i.e. the AutoBuild calls GetInstance on StructureMap and the first thing it does is
+            //to clear the defaults and replace them as this class is a Singleton.
+            var propertyDefaultsCopy = _propertyDefaults.Clone();
+            foreach (var propertyDefault in propertyDefaultsCopy)
             {
                 var propertyValue = propertyDefault.Value.Build();
                 //PropertyValue can be null when the user specifies the property value as null
