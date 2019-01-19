@@ -22,11 +22,15 @@ namespace Examples
             testDataContainer = new TestDataContainer();
 
             testDataContainer
+                .For<Invoice>(x => x
+                    .Default(i => i.Recipient).ToAutoBuild())
                 .For<Recipient>(x => x
-                    .Default(r => r.CustomerName).To("Sherlock Holmes"))
+                    .Default(r => r.CustomerName).To("Sherlock Holmes")
+                    .Default(r => r.Address).ToAutoBuild())
                 .For<Address>(x => x
                     .Default(a => a.FirstLine).To("221b Baker Street")
-                    .Default(a => a.City).To("London"))
+                    .Default(a => a.City).To("London")
+                    .Default(a => a.PostCode).ToAutoBuild())
                 .For<PostCode>(x => x
                     .Default(pc => pc.OutwardCode).To("NW1")
                     .Default(pc => pc.InwardCode).To("3RX"));
