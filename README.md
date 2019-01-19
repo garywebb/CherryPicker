@@ -22,64 +22,70 @@ The latest version of CherryPicker is available for download from NuGet:
 
 ## You mentioned an example? 
 
-I did! In this example, we see the two main functions of the Test Data Builder pattern/CherryPicker: to build a set of default data we use to populate our data objects. And to build objects unique to the tests' requirements using a minimal amount of code.
+I did! Let's populate a database with objects built by CherryPicker, and build an object with a reference type property. As you will see, the tests are very succinct and readable as a result.
 
 ```c#
 public class Tests 
 {
     //The main class in CherryPicker, we use it to store defaults and build new objects. 
-    private readonly ITestDataContainer testDataContainer = new TestDataContainer(); 
+    private static readonly ITestDataContainer testDataContainer = new TestDataContainer(); 
 
     public Tests() 
     { 
         //Set up defaults once to be used (or overridden) for each new Person object 
-        testDataContainer.For<Person>(x => x 
-            .Default(p => p.Name).To("Albert Einstein") 
-            .Default(p => p.Username).To("Bertie1") 
-            .Default(p => p.Email).To("albert@emc2.com") 
-            .Default(p => p.DOB).To(new DateTime(1879, 03, 14))); 
+        testDataContainer
+            .For<DiaryEntry>(x => x 
+                .Default(p => p.EntryText).To("Lorem ipsum dolor sit amet.") 
+                .Default(p => p.EntryDate).To(new DateTime(2019, 01, 19)));
+
+        testDataContainer
+            .For<Person>(x => x 
+                .Default(p => p.Name).To("Albert Einstein")
+				//NEW FOR VERSION 0.3!!
+                .Default(p => p.Address).ToAutoBuild())
+            .For<Address>(x => x 
+                .Default(a => a.Country).To("USA"));
     } 
 
     [Fact]
-    public void HappyPath() 
+    public void PopulateDatabaseWithDiaryEntries() 
     { 
-        //Build the default Person object - in this test we don't care
-        //about the specific values set for each property, just that they
-        //are set and are sensible realistic values.
-        var person = A<Person>();
+        using (var db = new DatabaseContext())
+        {
+            //A fully populated diary entry (assuming all DiaryEntry properties have 
+            //defaults set)
+            var aDiaryEntry = A<DiaryEntry>();      
+            db.DiaryEntries.Add(aDiaryEntry);
+
+            //Insert 10 days of diary entries (all with the same EntryText)
+            for (int day = 1; day < 11; day++)
+            {
+                var januaryDiaryEntry = 
+                    A<DiaryEntry>(x => x
+                        .Set(de => de.EntryDate).To(new DateTime(2019, 01, day)));
+                db.DiaryEntries.Add(januaryDiaryEntry);
+            }
+
+            db.SaveChanges();
+        }
         
-        Assert.True(person.Name == "Albert Einstein");
-        //etc.
-    } 
+        //Rest of test code here...
+    }
 
     [Fact]
-    public void InvalidEmail() 
+    public void BuildAnObjectWithAReferenceTypeProperty() 
     {
-        //In this test we want a Person object that is fully populated with sensible,
-        //realistic values, except for the email address which is invalid.
-        var person = A<Person>(x => x
-            .Set(p => p.Email).To("dodgy@invalid"));
+        var aPerson = A<Person>();
 
-        Assert.True(person.Name == "Albert Einstein");
-        //etc.
-    } 
-
-    [Fact] 
-    public void InvalidDOB() 
-    { 
-        //We can do this for any property value and any type.
-        var person = A<Person>(x => x
-            .Set(p => p.DOB).To(new DateTime(9999, 12, 31))); 
-
-        Assert.True(person.Name == "Albert Einstein");
-        //etc.
-    } 
+        Assert.True(aPerson.Name == "Albert Einstein");
+        Assert.True(aPerson.Address.Country == "USA"); 
+    }
  
     /// <summary> 
     /// Usually stored in a base class. It is used to wrap the Build 
     /// call in a very succinct, readable method. 
     /// </summary> 
-    private T A<T>(params Action<DefaultOverride<T>>[] overrides) 
+    protected virtual T A<T>(params Action<DefaultOverride<T>>[] overrides) 
     { 
         return testDataContainer.Build(overrides); 
     } 
