@@ -36,6 +36,37 @@ namespace CherryPickerTests.TestClasses
         public ushort? NullUShort { get; set; }
 
         public string String { get; set; }
+
+        public int[] IntArray { get; set; }
+        public int?[] NullIntArray { get; set; }
+        public short[] ShortArray { get; set; }
+        public short?[] NullShortArray { get; set; }
+        public bool[] BoolArray { get; set; }
+        public bool?[] NullBoolArray { get; set; }
+        public byte[] ByteArray { get; set; }
+        public byte?[] NullByteArray { get; set; }
+        public char[] CharArray { get; set; }
+        public char?[] NullCharArray { get; set; }
+        public decimal[] DecimalArray { get; set; }
+        public decimal?[] NullDecimalArray { get; set; }
+        public double[] DoubleArray { get; set; }
+        public double?[] NullDoubleArray { get; set; }
+        public MyEnum[] MyEnumArray { get; set; }
+        public MyEnum?[] NullMyEnumArray { get; set; }
+        public float[] FloatArray { get; set; }
+        public float?[] NullFloatArray { get; set; }
+        public long[] LongArray { get; set; }
+        public long?[] NullLongArray { get; set; }
+        public sbyte[] SByteArray { get; set; }
+        public sbyte?[] NullSByteArray { get; set; }
+        public uint[] UIntArray { get; set; }
+        public uint?[] NullUIntArray { get; set; }
+        public ulong[] ULongArray { get; set; }
+        public ulong?[] NullULongArray { get; set; }
+        public ushort[] UShortArray { get; set; }
+        public ushort?[] NullUShortArray { get; set; }
+
+        public string[] StringArray { get; set; }
     }
 
     public enum MyEnum
