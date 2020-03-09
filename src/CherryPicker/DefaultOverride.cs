@@ -6,6 +6,7 @@ using System.Text;
 
 namespace CherryPicker
 {
+    //Default Override class
     public class DefaultOverride<T>
     {
         internal Action<string> OnPropertyNameSet { get; set; }
